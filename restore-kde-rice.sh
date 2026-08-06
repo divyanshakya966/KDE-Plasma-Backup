@@ -17,7 +17,7 @@ echo "[+] Restoring User Configurations (~/.config)..."
 mkdir -p ~/.config
 cp -r "$EXTRACT_DIR"/user_config/* ~/.config/ 2>/dev/null || true
 
-echo "[+] Restoring User Assets (~/.local/share)..."
+echo "[+] Restoring User Assets & Custom Profiles (~/.local/share)..."
 mkdir -p ~/.local/share
 cp -r "$EXTRACT_DIR"/user_local_share/* ~/.local/share/ 2>/dev/null || true
 
@@ -29,10 +29,10 @@ if [ -d "$EXTRACT_DIR/sddm_usr/themes" ]; then
     sudo cp -r "$EXTRACT_DIR"/sddm_usr/themes/* /usr/share/sddm/themes/ 2>/dev/null || true
 fi
 
-echo "[+] Cleaning up temporary files..."
+echo "[+] Cleaning up extraction folder..."
 rm -rf "$EXTRACT_DIR"
 
 echo "[+] Restarting Plasma Shell..."
 plasmashell --replace &>/dev/null &
 
-echo "[SUCCESS] Restoration completed! Please log out and back in for full effect."
+echo "[SUCCESS] Restoration finished! Please log out and log back in for full mouse, font, and KWin changes to take effect."
