@@ -46,8 +46,8 @@ The scripts target the following specific configurations to ensure a 1:1 recreat
 The `backup-kde-rice.sh` script gathers your current configurations and bundles them into a compressed archive in your Home directory.
 
 1. **Make the script executable:**
-   ```bash
-   chmod +x backup-kde-rice.sh
+```bash
+chmod +x backup-kde-rice.sh
 
 ```
 
