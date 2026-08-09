@@ -7,7 +7,7 @@ BACKUP_NAME="kde_rice_backup_${TIMESTAMP}"
 BACKUP_DIR="$HOME/${BACKUP_NAME}"
 
 echo "[+] Creating temporary backup directory..."
-mkdir -p "$BACKUP_DIR/user_config" "$BACKUP_DIR/user_local_share" "$BACKUP_DIR/sddm_etc" "$BACKUP_DIR/sddm_usr"
+mkdir -p "$BACKUP_DIR/user_config" "$BACKUP_DIR/user_local_share" "$BACKUP_DIR/sddm_etc" "$BACKUP_DIR/sddm_usr" "$BACKUP_DIR/plymouth_usr" "$BACKUP_DIR/plymouth_etc" "$BACKUP_DIR/dracut_etc"
 
 echo "[+] Backing up Power, Input Devices & Display Profiles..."
 cp ~/.config/powermanagementprofilesrc "$BACKUP_DIR/user_config/" 2>/dev/null || true
@@ -42,6 +42,17 @@ cp -r ~/.local/share/aurorae/ "$BACKUP_DIR/user_local_share/" 2>/dev/null || tru
 cp -r ~/.local/share/color-schemes/ "$BACKUP_DIR/user_local_share/" 2>/dev/null || true
 cp -r ~/.local/share/konsole/ "$BACKUP_DIR/user_local_share/" 2>/dev/null || true
 cp -r ~/.local/share/fonts/ "$BACKUP_DIR/user_local_share/" 2>/dev/null || true
+
+echo "[+] Backing up Plymouth Themes, System Configs & Dracut (sudo required)..."
+if [ -d /usr/share/plymouth/themes ]; then
+    sudo cp -r /usr/share/plymouth/themes/ "$BACKUP_DIR/plymouth_usr/" 2>/dev/null || true
+fi
+if [ -d /etc/plymouth ]; then
+    sudo cp -r /etc/plymouth/ "$BACKUP_DIR/plymouth_etc/" 2>/dev/null || true
+fi
+if [ -d /etc/dracut.conf.d ]; then
+    sudo cp -r /etc/dracut.conf.d/ "$BACKUP_DIR/dracut_etc/" 2>/dev/null || true
+fi
 
 echo "[+] Backing up SDDM Configuration & Themes (sudo required)..."
 if [ -d /etc/sddm.conf.d ]; then

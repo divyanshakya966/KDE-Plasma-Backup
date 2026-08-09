@@ -1,22 +1,23 @@
-# KDE Plasma 6 & SDDM Configuration Manager
+# KDE Plasma 6, Plymouth & SDDM Configuration Manager
 
-This repository contains automated Bash utilities for backing up and restoring the visual state, ricing configurations, user preferences, and login screen themes of a customized KDE Plasma desktop environment. 
+This repository contains automated Bash utilities for backing up and restoring the visual state, ricing configurations, user preferences, boot splash themes, and login screen settings of a customized KDE Plasma desktop environment. 
 
-Unlike heavy, full-system snapshot tools, these scripts are precision-targeted. They isolate user interface layouts, widget placements, power management schedules, shortcuts, themes, terminal profiles, and SDDM customizations, making it easy to port your exact desktop experience across different machines or recover from a visual breakage.
+Unlike heavy, full-system snapshot tools, these scripts are precision-targeted. They isolate user interface layouts, widget placements, power management schedules, shortcuts, themes, terminal profiles, Plymouth boot screens, and SDDM customizations, making it easy to port your exact desktop experience across different machines or recover from a visual breakage.
 
 ## Features
 
-* **Targeted Backups:** Captures only dotfiles, local share assets, and display manager configs. Leaves heavy personal files and OS binaries untouched.
+* **Targeted Backups:** Captures dotfiles, local share assets, Plymouth boot themes/configs, Dracut rules, and display manager configs.
 * **Complete Visual & Behavior Portability:** Backs up panels, custom widgets (plasmoids), KWin rules, window decorations, global shortcuts, input device speeds, and font rendering settings.
 * **App & Utility Configs:** Saves preferences for built-in tools like KRunner, Konsole, and Spectacle.
-* **SDDM Integration:** Preserves both system-wide SDDM themes (`/usr/share/sddm`) and user override configs (`/etc/sddm.conf.d/`).
+* **Boot & Login Integration:** Preserves Plymouth themes (`/usr/share/plymouth/themes`), system Plymouth rules (`/etc/plymouth/`), Dracut configurations (`/etc/dracut.conf.d/`), and SDDM themes (`/usr/share/sddm`).
+* **Automated Initramfs Rebuild:** Automatically triggers `dracut --regenerate-all --force` upon restoration to bake restored Plymouth boot themes directly into the bootloader image.
 * **Timestamped Archives:** Automatically generates cleanly organized, timestamped `.tar.gz` archives for version control and rollback.
 
 ## Prerequisites
 
 * **Operating System:** Fedora Workstation (or any system running KDE Plasma 5/6).
-* **Dependencies:** Standard coreutils (`cp`, `tar`, `mkdir`).
-* **Privileges:** `sudo` access is required *only* for the SDDM configuration portions (backing up and restoring from `/etc` and `/usr/share`).
+* **Dependencies:** Standard coreutils (`cp`, `tar`, `mkdir`, `dracut`).
+* **Privileges:** `sudo` access is required *only* for Plymouth boot themes, Dracut, and SDDM configuration portions (backing up and restoring from `/etc` and `/usr/share`).
 
 ---
 
@@ -34,8 +35,9 @@ The scripts target the following specific configurations to ensure a 1:1 recreat
 | **Power & Display** | `powermanagementprofilesrc`<br>`kscreenlockerrc`, `kscreen/`, `ksplashrc` | Sleep timeouts, screen dimming rules, lock screen layout, and splash screens. |
 | **Apps & Utilities** | `krunnerrc`, `konsolerc`, `spectaclerc`<br>`~/.local/share/konsole/` | KRunner search behavior, Spectacle screenshot rules, Konsole profiles & colors. |
 | **Custom Assets** | `~/.local/share/plasma/`, `icons/`, `themes/`, `wallpapers/`, `aurorae/` | Installed plasmoids, icon packs, custom window decorations, and wallpapers. |
+| **Plymouth Boot Themes** | `/usr/share/plymouth/themes/`<br>`/etc/plymouth/plymouthd.conf`<br>`/etc/dracut.conf.d/` | Custom boot screen visuals, active Plymouth theme configuration, and initramfs boot rules. |
 | **SDDM Login Configs** | `/etc/sddm.conf.d/`, `/etc/sddm.conf` | System login manager settings, auto-login rules, and display overrides. |
-| **SDDM Themes** | `/usr/share/sddm/themes/` | Custom login screen visual theme assets (QML, images, backgrounds). |
+| **SDDM Login Themes** | `/usr/share/sddm/themes/` | Custom login screen visual theme assets (QML, images, backgrounds). |
 
 ---
 
@@ -57,8 +59,8 @@ chmod +x backup-kde-rice.sh
 
 ```
 
+3. **Provide Elevated Privileges:** The script will prompt for your `sudo` password to securely copy system-level Plymouth boot themes, Dracut configs, and SDDM settings from root-owned directories.
 
-3. **Provide Elevated Privileges:** The script will prompt for your `sudo` password to securely copy SDDM configuration files from root-owned directories.
 4. **Output:** A file named `kde_rice_backup_YYYYMMDD_HHMMSS.tar.gz` will be generated in your home folder.
 
 ### 2. Restoring Your Configuration
@@ -71,15 +73,13 @@ chmod +x restore-kde-rice.sh
 
 ```
 
-
 2. **Run the restore command** (pass the archive file as an argument):
 ```bash
 ./restore-kde-rice.sh kde_rice_backup_YYYYMMDD_HHMMSS.tar.gz
 
 ```
 
-
-3. **Apply Changes:** Once the script finishes, it will automatically attempt to restart the Plasma shell. For a complete application of SDDM, KWin rules, fonts, and input devices, **log out and log back in** (or reboot).
+3. **Apply Changes:** The script automatically attempts to restart the Plasma shell and regenerate your initramfs image via `dracut`. For full application of Plymouth boot splash screens, SDDM, KWin rules, fonts, and input devices, **reboot your system**.
 
 ---
 
@@ -98,14 +98,12 @@ cp -r ~/.config/Kvantum "$BACKUP_DIR/user_config/" 2>/dev/null || true
 
 ```
 
-*Don't forget to add corresponding copy commands to the `restore-kde-rice.sh` script if the extraction paths differ, though the standard user configs folder loops automatically.*
+### 2. Removing Root / Plymouth / SDDM Requirements
 
-### 2. Removing Root / SDDM Requirements
+If you want to run this script as a purely user-level automation job without manual `sudo` intervention, you can strip out system-level tracking.
 
-If you want to run this script as a purely user-level automation job without manual `sudo` intervention, you can strip out the SDDM tracking.
-
-* **In the backup script:** Delete or comment out the entire `[+] Backing up SDDM Configuration` block.
-* **In the restore script:** Delete or comment out the `[+] Restoring SDDM Configurations` block.
+* **In the backup script:** Delete or comment out the entire Plymouth and SDDM blocks.
+* **In the restore script:** Delete or comment out the corresponding system restoration and `dracut` rebuild blocks.
 * *Result:* The scripts will now execute 100% in user-space without ever prompting for a root password.
 
 ### 3. Changing the Output Directory
@@ -122,6 +120,6 @@ tar -czvf "/mnt/external_drive/Backups/${BACKUP_NAME}.tar.gz" -C "$HOME" "$BACKU
 
 ## Security & Automation Best Practices
 
-* **Secure Storage:** Because these archives contain exact system states and potentially sensitive user configurations (like application layouts or auto-login files), ensure the resulting `.tar.gz` files are stored in directories with restricted read permissions (`chmod 600`), especially if pushing to a remote or cloud backup server.
-* **Automated CI/CD or Cron:** If integrating this into an automated pipeline or standard `cron` job, ensure you implement the modifications to remove the `sudo` SDDM prompts (as mentioned above) to prevent the script from hanging while waiting for standard input.
+* **Secure Storage:** Because these archives contain exact system states and potentially sensitive user configurations (like application layouts or auto-login files), ensure the resulting `.tar.gz` files are stored in directories with restricted read permissions (`chmod 600`).
+* **Automated CI/CD or Cron:** If integrating this into an automated pipeline or standard `cron` job, remove the `sudo` Plymouth, Dracut, and SDDM prompts to prevent the script from hanging while waiting for standard input.
 * **Validation:** Regularly test your restoration script on a virtual machine or a secondary user account to ensure the structural integrity of the archives.
