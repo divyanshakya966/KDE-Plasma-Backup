@@ -17,6 +17,11 @@ echo "[+] Restoring User Configurations (~/.config)..."
 mkdir -p ~/.config
 cp -r "$EXTRACT_DIR"/user_config/* ~/.config/ 2>/dev/null || true
 
+echo "[+] Restoring User Home files (~/.bashrc)..."
+if [ -d "$EXTRACT_DIR/user_home" ]; then
+    cp -a "$EXTRACT_DIR"/user_home/. ~/ 2>/dev/null || true
+fi
+
 echo "[+] Restoring User Assets & Custom Profiles (~/.local/share)..."
 mkdir -p ~/.local/share
 cp -r "$EXTRACT_DIR"/user_local_share/* ~/.local/share/ 2>/dev/null || true

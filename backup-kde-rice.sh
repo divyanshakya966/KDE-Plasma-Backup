@@ -7,7 +7,7 @@ BACKUP_NAME="kde_rice_backup_${TIMESTAMP}"
 BACKUP_DIR="$HOME/${BACKUP_NAME}"
 
 echo "[+] Creating temporary backup directory..."
-mkdir -p "$BACKUP_DIR/user_config" "$BACKUP_DIR/user_local_share" "$BACKUP_DIR/sddm_etc" "$BACKUP_DIR/sddm_usr" "$BACKUP_DIR/plymouth_usr" "$BACKUP_DIR/plymouth_etc" "$BACKUP_DIR/dracut_etc"
+mkdir -p "$BACKUP_DIR/user_config" "$BACKUP_DIR/user_local_share" "$BACKUP_DIR/user_home" "$BACKUP_DIR/sddm_etc" "$BACKUP_DIR/sddm_usr" "$BACKUP_DIR/plymouth_usr" "$BACKUP_DIR/plymouth_etc" "$BACKUP_DIR/dracut_etc"
 
 echo "[+] Backing up Power, Input Devices & Display Profiles..."
 cp ~/.config/powermanagementprofilesrc "$BACKUP_DIR/user_config/" 2>/dev/null || true
@@ -32,6 +32,12 @@ cp ~/.config/kwinrulesrc "$BACKUP_DIR/user_config/" 2>/dev/null || true
 cp ~/.config/breezerc "$BACKUP_DIR/user_config/" 2>/dev/null || true
 cp ~/.config/ksplashrc "$BACKUP_DIR/user_config/" 2>/dev/null || true
 cp ~/.config/spectaclerc "$BACKUP_DIR/user_config/" 2>/dev/null || true
+
+echo "[+] Backing up .bashrc and ble.sh local share data..."
+cp ~/.bashrc "$BACKUP_DIR/user_home/" 2>/dev/null || true
+if [ -d "$HOME/.local/share/blesh" ]; then
+    cp -r "$HOME/.local/share/blesh" "$BACKUP_DIR/user_local_share/" 2>/dev/null || true
+fi
 
 echo "[+] Backing up Custom Installed Assets & Profiles..."
 cp -r ~/.local/share/plasma/ "$BACKUP_DIR/user_local_share/" 2>/dev/null || true
