@@ -45,55 +45,17 @@ The scripts target the following specific configurations to ensure a 1:1 recreat
 
 | Category | Targeted File / Directory | Description / Purpose |
 | --- | --- | --- |
-| **Desktop Layout & Widgets** | `plasma-org.kde.plasma.desktop-appletsrc`<br>
-
-<br>`plasmashellrc`, `plasmarc` | Panel positions, applets, widgets, and overall desktop layout configs.
-
- |
-| **KWin, Window Rules & UI** | `kwinrc`, `kwinrulesrc`, `breezerc` | Window rules, titlebar decorations, blur effects, and widget styles.
-
- |
-| **Themes, Colors & Fonts** | `kdeglobals`, `kcmfonts`<br>
-
-<br>`~/.local/share/fonts/`<br>
-
-<br>`~/.local/share/color-schemes/` | Global accent colors, custom fonts, DPI scaling, anti-aliasing, and color files.
-
- |
-| **Input & Peripherals** | `kcminputrc` | Mouse speed, acceleration, and touchpad gestures.
-
- |
-| **Global Shortcuts** | `kglobalshortcutsrc`, `khotkeysrc` | Keybindings, custom hotkeys, and window action shortcuts.
-
- |
-| **Power & Display** | `powermanagementprofilesrc`<br>
-
-<br>`kscreenlockerrc`, `kscreen/`, `ksplashrc` | Sleep timeouts, screen dimming rules, lock screen layout, and splash screens.
-
- |
-| **Apps & Shell Environment** | `krunnerrc`, `konsolerc`, `spectaclerc`<br>
-
-<br>`~/.local/share/konsole/`<br>
-
-<br>`~/.bashrc`, `~/.local/share/blesh/` | KRunner search, Spectacle, Konsole profiles, shell configurations, and **ble.sh** local state files.
-
- |
-| **Custom Assets** | `~/.local/share/plasma/`, `icons/`, `themes/`, `wallpapers/`, `aurorae/` | Installed plasmoids, icon packs, custom window decorations, and wallpapers.
-
- |
-| **Plymouth Boot Themes** | `/usr/share/plymouth/themes/`<br>
-
-<br>`/etc/plymouth/plymouthd.conf`<br>
-
-<br>`/etc/dracut.conf.d/` | Custom boot screen visuals, active Plymouth theme configuration, and initramfs boot rules.
-
- |
-| **SDDM Login Configs** | `/etc/sddm.conf.d/`, `/etc/sddm.conf` | System login manager settings, auto-login rules, and display overrides.
-
- |
-| **SDDM Login Themes** | `/usr/share/sddm/themes/` | Custom login screen visual theme assets (QML, images, backgrounds).
-
- |
+| **Desktop Layout & Widgets** | `plasma-org.kde.plasma.desktop-appletsrc`<br><br>`plasmashellrc`, `plasmarc` | Panel positions, applets, widgets, and overall desktop layout configs.|
+| **KWin, Window Rules & UI** | `kwinrc`, `kwinrulesrc`, `breezerc` | Window rules, titlebar decorations, blur effects, and widget styles.|
+| **Themes, Colors & Fonts** | `kdeglobals`, `kcmfonts`<br><br>`~/.local/share/fonts/`<br><br>`~/.local/share/color-schemes/` | Global accent colors, custom fonts, DPI scaling, anti-aliasing, and color files.|
+| **Input & Peripherals** | `kcminputrc` | Mouse speed, acceleration, and touchpad gestures.|
+| **Global Shortcuts** | `kglobalshortcutsrc`, `khotkeysrc` | Keybindings, custom hotkeys, and window action shortcuts.|
+| **Power & Display** | `powermanagementprofilesrc`<br><br>`kscreenlockerrc`, `kscreen/`, `ksplashrc` | Sleep timeouts, screen dimming rules, lock screen layout, and splash screens.|
+| **Apps & Shell Environment** | `krunnerrc`, `konsolerc`, `spectaclerc`<br><br>`~/.local/share/konsole/`<br><br>`~/.bashrc`, `~/.local/share/blesh/` | KRunner search, Spectacle, Konsole profiles, shell configurations, and **ble.sh** local state files.|
+| **Custom Assets** | `~/.local/share/plasma/`, `icons/`, `themes/`, `wallpapers/`, `aurorae/` | Installed plasmoids, icon packs, custom window decorations, and wallpapers.|
+| **Plymouth Boot Themes** | `/usr/share/plymouth/themes/`<br><br>`/etc/plymouth/plymouthd.conf`<br><br>`/etc/dracut.conf.d/` | Custom boot screen visuals, active Plymouth theme configuration, and initramfs boot rules.|
+| **SDDM Login Configs** | `/etc/sddm.conf.d/`, `/etc/sddm.conf` | System login manager settings, auto-login rules, and display overrides.|
+| **SDDM Login Themes** | `/usr/share/sddm/themes/` | Custom login screen visual theme assets (QML, images, backgrounds).|
 
 ---
 
