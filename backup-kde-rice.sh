@@ -152,6 +152,12 @@ if [ "${#EXISTING[@]}" -gt 0 ]; then
     sudo rsync -aHAXR --numeric-ids "${EXISTING[@]}" "$STAGE/"
 fi
 
+# /opt: apps installed manually to /opt (e.g. Discord, Packet Tracer).
+if [ -d /opt ] && [ -n "$(ls -A /opt 2>/dev/null)" ]; then
+    log "Backing up /opt (manual app installs)..."
+    sudo rsync -aHAXR --numeric-ids /opt "$STAGE/"
+fi
+
 # ------------------------------------------------------------------ 4. boot
 log "Backing up GRUB theme assets..."
 if [ -d /boot/grub2/themes ]; then

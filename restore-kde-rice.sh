@@ -30,7 +30,11 @@ done
 [ -f "$ARCHIVE" ] || die "Archive not found: $ARCHIVE"
 [ "$(id -u)" -ne 0 ] || die "Do not run as root. Run as your normal user (sudo will be requested)."
 
-TMP="$(mktemp -d /tmp/kde_restore.XXXXXX)"
+# Extract to disk-backed storage. On Fedora /tmp is tmpfs (RAM), so a large
+# archive would exhaust memory. Override with RESTORE_TMPDIR if needed.
+TMP_BASE="${RESTORE_TMPDIR:-/var/tmp}"
+mkdir -p "$TMP_BASE"
+TMP="$(mktemp -d "$TMP_BASE/kde_restore.XXXXXX")"
 KEEPALIVE_PID=""
 cleanup() { [ -n "$KEEPALIVE_PID" ] && kill "$KEEPALIVE_PID" 2>/dev/null || true; sudo rm -rf "$TMP" 2>/dev/null || rm -rf "$TMP" 2>/dev/null || true; }
 trap cleanup EXIT INT TERM
@@ -54,6 +58,16 @@ log "Extracting archive..."
 sudo tar --acls --xattrs --selinux --numeric-owner -xpf "$ARCHIVE" -C "$TMP" --strip-components=1
 
 [ -f "$TMP/META.txt" ] && { echo; sed 's/^/    /' "$TMP/META.txt"; echo; }
+
+# Warn (do not abort) when restoring a backup made on a different Fedora release.
+if [ -f "$TMP/META.txt" ]; then
+    BACKUP_FEDORA=$(awk -F= '/^fedora_release=/{print $2}' "$TMP/META.txt" | tr -dc '0-9')
+    CURRENT_FEDORA=$(rpm -E %fedora 2>/dev/null || true)
+    if [ -n "$BACKUP_FEDORA" ] && [ -n "$CURRENT_FEDORA" ] && [ "$BACKUP_FEDORA" != "$CURRENT_FEDORA" ]; then
+        warn "Backup is from Fedora ${BACKUP_FEDORA} but this system is Fedora ${CURRENT_FEDORA}."
+        warn "Package/config versions may differ. Prefer restoring a same-release backup."
+    fi
+fi
 
 if [ "$ASSUME_YES" -ne 1 ]; then
     warn "This will OVERWRITE your current user config, /etc and system theme files."
@@ -99,6 +113,12 @@ sudo rsync -aHAX --numeric-ids --exclude-from="$TMP/.restore-exclude" "$TMP/etc/
 # Keep the fresh D-Bus machine-id.
 info "Machine identity, disk table and account databases kept from the fresh install."
 
+# Make sure the restored sudoers is still valid so we cannot lock ourselves out.
+if [ -f /etc/sudoers ]; then
+    sudo visudo -c -f /etc/sudoers >/dev/null 2>&1 \
+        || warn "Restored /etc/sudoers failed validation! Fix it with 'sudo visudo' before logging out."
+fi
+
 # ------------------------------------------------------------------ 2. pkgs
 log "Installing RPM packages (this can take a long time)..."
 sudo dnf -y makecache || warn "dnf makecache had issues; continuing."
@@ -113,25 +133,35 @@ else
 fi
 
 log "Restoring Flatpak remotes and applications..."
-if [ -s "$TMP/packages/flatpak-remotes.txt" ]; then
-    while read -r name url _rest; do
-        [ -n "${name:-}" ] && [ -n "${url:-}" ] || continue
-        sudo flatpak remote-add --if-not-exists --system "$name" "$url" 2>/dev/null || true
-    done < "$TMP/packages/flatpak-remotes.txt"
-fi
-if [ -s "$TMP/packages/flatpak-apps.txt" ]; then
-    info "Installing Flatpak applications..."
-    while read -r ref; do
-        [ -n "$ref" ] || continue
-        sudo flatpak install -y --noninteractive --system "$ref" 2>/dev/null || \
-            warn "Flatpak install failed: $ref"
-    done < "$TMP/packages/flatpak-apps.txt"
+if command -v flatpak >/dev/null 2>&1; then
+    if [ -s "$TMP/packages/flatpak-remotes.txt" ]; then
+        while read -r name url _rest; do
+            [ -n "${name:-}" ] && [ -n "${url:-}" ] || continue
+            sudo flatpak remote-add --if-not-exists --system "$name" "$url" 2>/dev/null || true
+        done < "$TMP/packages/flatpak-remotes.txt"
+    fi
+    if [ -s "$TMP/packages/flatpak-apps.txt" ]; then
+        info "Installing Flatpak applications..."
+        while read -r ref; do
+            [ -n "$ref" ] || continue
+            sudo flatpak install -y --noninteractive --system "$ref" 2>/dev/null || \
+                warn "Flatpak install failed: $ref"
+        done < "$TMP/packages/flatpak-apps.txt"
+    fi
+else
+    warn "flatpak is not installed; skipping Flatpak restore."
 fi
 
 # ------------------------------------------------------------------ 3. usr
 log "Restoring system-wide themes, icons, fonts and KDE assets..."
 if [ -d "$TMP/usr" ]; then
     sudo rsync -aHAX --numeric-ids "$TMP/usr/" /usr/
+fi
+
+if [ -d "$TMP/opt" ]; then
+    log "Restoring /opt (manual app installs)..."
+    sudo mkdir -p /opt
+    sudo rsync -aHAX --numeric-ids "$TMP/opt/" /opt/
 fi
 
 log "Restoring GRUB theme assets..."

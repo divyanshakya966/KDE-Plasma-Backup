@@ -27,6 +27,7 @@ is written `chmod 600` and a `.sha256` checksum is generated next to it.
 | **System config** | `/etc/` | Full copy: SDDM, Plymouth, dracut, NetworkManager connections, cron, systemd units, dnf repos, firewalld, X11/Xorg, modprobe, udev, etc. |
 | **System themes/assets** | `/usr/share/{sddm,themes,icons,fonts,plasma,color-schemes,aurorae,konsole,wallpapers,backgrounds,grub}/`, `/usr/share/plymouth/themes`, `/usr/share/{xsessions,wayland-sessions}`, `/usr/local/share` | System-wide installed look-and-feel, login/boot themes and fonts. |
 | **Boot theme assets** | `/boot/grub2/themes` | GRUB theme files. |
+| **Manual app installs** | `/opt/` | Apps installed outside the package manager (e.g. Discord, Packet Tracer). |
 | **Cron spool** | `/var/spool/cron` | User/root crontabs. |
 | **Package list** | `packages/rpm-userinstalled.txt` | `dnf repoquery --userinstalled` (clean package names, no versions). |
 | **Full RPM list** | `packages/rpm-all.txt` | Fallback inventory from `rpm -qa`. |
@@ -76,6 +77,8 @@ protect them.
 chmod +x restore-kde-rice.sh
 ./restore-kde-rice.sh /path/to/kde_rice_backup_YYYYMMDD_HHMMSS.tar.gz
 # add -y to skip the confirmation prompt
+# set RESTORE_TMPDIR=/some/disk/path to change the extraction directory
+# (default is /var/tmp; never /tmp, which is RAM-backed on Fedora)
 ```
 
 The restore script will:
