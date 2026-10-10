@@ -122,6 +122,32 @@ fi
 # ------------------------------------------------------------------ 2. pkgs
 log "Installing RPM packages (this can take a long time)..."
 sudo dnf -y makecache || warn "dnf makecache had issues; continuing."
+
+# Re-enable COPR repositories first, otherwise packages installed from them
+# cannot be found. Repos that were disabled in the backup stay disabled.
+if [ -s "$TMP/packages/copr-repos.txt" ]; then
+    info "Re-enabling COPR repositories..."
+    while read -r repo; do
+        repo="${repo% }"
+        [ -n "$repo" ] || continue
+        disabled=0
+        case "$repo" in
+            *" (disabled)") disabled=1; repo="${repo% (disabled)}" ;;
+        esac
+        repo="${repo#copr.fedorainfracloud.org/}"
+        repo="${repo#https://copr.fedorainfracloud.org/coprs/}"
+        repo="${repo%/}"
+        [ -n "$repo" ] || continue
+        if sudo dnf -y copr enable "$repo" >/dev/null 2>&1; then
+            if [ "$disabled" -eq 1 ]; then
+                sudo dnf copr disable "$repo" >/dev/null 2>&1 || true
+            fi
+        else
+            warn "Could not enable COPR repo: $repo"
+        fi
+    done < "$TMP/packages/copr-repos.txt"
+fi
+
 if [ -s "$TMP/packages/rpm-userinstalled.txt" ]; then
     mapfile -t PKGS < "$TMP/packages/rpm-userinstalled.txt"
     mapfile -t PKGS < <(printf '%s\n' "${PKGS[@]}" | grep -v '^$' | sort -u)
@@ -130,6 +156,18 @@ if [ -s "$TMP/packages/rpm-userinstalled.txt" ]; then
         || warn "Some RPM packages could not be installed. Review the output above."
 else
     warn "No RPM package list found in archive; skipping."
+fi
+
+# Install the same package groups that were present in the backup.
+if [ -s "$TMP/packages/dnf-groups.txt" ]; then
+    mapfile -t GROUPS < "$TMP/packages/dnf-groups.txt"
+    mapfile -t GROUPS < <(printf '%s\n' "${GROUPS[@]}" | grep -v '^$' | sort -u)
+    info "Installing ${#GROUPS[@]} package groups from backup..."
+    sudo dnf -y group install --skip-broken --setopt=install_weak_deps=True \
+        --setopt=group_package_types=mandatory,default "${GROUPS[@]}" \
+        || warn "Some package groups could not be installed. Review the output above."
+else
+    warn "No package group list found in archive; skipping."
 fi
 
 log "Restoring Flatpak remotes and applications..."

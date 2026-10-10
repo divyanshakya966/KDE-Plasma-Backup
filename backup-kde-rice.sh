@@ -25,6 +25,9 @@ log()  { printf "${c_green}[+ ]${c_off} %s\n" "$*"; }
 info() { printf "${c_blue}[ i]${c_off} %s\n" "$*"; }
 warn() { printf "${c_yellow}[ !]${c_off} %s\n" "$*" >&2; }
 die()  { printf "${c_red}[ x]${c_off} %s\n" "$*" >&2; exit 1; }
+# Run a command with a hard timeout when coreutils' `timeout` is available,
+# so a slow/hung network query (dnf/flatpak) cannot stall the whole backup.
+tt() { local secs="$1"; shift; if command -v timeout >/dev/null 2>&1; then timeout "$secs" "$@"; else "$@"; fi; }
 
 cleanup() { sudo rm -rf "$STAGE" 2>/dev/null || rm -rf "$STAGE" 2>/dev/null || true; }
 KEEPALIVE_PID=""
@@ -95,6 +98,9 @@ cat > "$STAGE/.home-filters" <<'EOF'
 - Crash Reports/
 - */logs/
 - *.log
+# --- root-owned / unreadable transient state (would abort rsync) ---
+- lesshst
+- .local/state/lesshst
 # --- include all top-level hidden entries recursively ---
 + /.*/
 + /.*/**
@@ -110,7 +116,13 @@ if [ "$INCLUDE_USER_DATA" = "1" ]; then
     done
 fi
 
-rsync -aHAX --numeric-ids --filter="merge $STAGE/.home-filters" "$HOME/." "$STAGE/home/"
+rc=0
+rsync -aHAX --numeric-ids --filter="merge $STAGE/.home-filters" "$HOME/." "$STAGE/home/" || rc=$?
+if [ "$rc" -eq 23 ]; then
+    warn "Some user files could not be read (skipped); backup continues. See rsync output above."
+elif [ "$rc" -ne 0 ]; then
+    die "rsync failed while backing up user files (exit $rc)."
+fi
 rm -f "$STAGE/.home-filters"
 
 # ------------------------------------------------------------------ 2. /etc
@@ -176,15 +188,33 @@ fi
 # ------------------------------------------------------ 6. package lists
 log "Collecting installed package lists, repos and enabled services..."
 P="$STAGE/packages"
-dnf repoquery --userinstalled --qf '%{name}\n' 2>/dev/null | sort -u > "$P/rpm-userinstalled.txt" || true
+
+info "  dnf: user-installed packages..."
+tt 180 dnf repoquery --userinstalled --qf '%{name}\n' 2>/dev/null | sort -u > "$P/rpm-userinstalled.txt" \
+    || warn "dnf repoquery failed or timed out; RPM user-package list may be incomplete."
+
+info "  rpm: all packages..."
 rpm -qa --qf '%{NAME}\n' 2>/dev/null | sort -u > "$P/rpm-all.txt" || true
-dnf copr list 2>/dev/null | grep -v '^$' > "$P/copr-repos.txt" || true
-dnf group list --installed --hidden 2>/dev/null | sed -n '/^Installed Environment Groups:/,/^$/p;/^Installed Groups:/,/^$/p' > "$P/dnf-groups.txt" || true
-flatpak remotes --columns=name,url 2>/dev/null > "$P/flatpak-remotes.txt" || true
-flatpak list --app --columns=ref 2>/dev/null > "$P/flatpak-apps.txt" || true
-flatpak list --runtime --columns=ref 2>/dev/null > "$P/flatpak-runtimes.txt" || true
-systemctl list-unit-files --state=enabled --no-legend --no-pager 2>/dev/null | awk '{print $1}' | sort -u > "$P/systemd-enabled-units.txt" || true
-systemctl --user list-unit-files --state=enabled --no-legend --no-pager 2>/dev/null | awk '{print $1}' | sort -u > "$P/systemd-user-enabled-units.txt" || true
+
+info "  dnf: copr repos..."
+tt 60 dnf copr list 2>/dev/null | grep -v '^$' > "$P/copr-repos.txt" || warn "dnf copr list failed or timed out."
+
+info "  dnf: installed groups..."
+# dnf5 prints a plain table (id name installed). Prefer cache-only (fast, no
+# network) and fall back to a live query if the cache is incomplete.
+{ tt 60 dnf --cacheonly group list --installed --hidden 2>/dev/null \
+    || tt 120 dnf group list --installed --hidden 2>/dev/null; } \
+    | awk '$NF=="yes"{print $1}' | sort -u > "$P/dnf-groups.txt" || true
+[ -s "$P/dnf-groups.txt" ] || warn "dnf group list produced no data (non-fatal)."
+
+info "  flatpak: remotes and apps..."
+tt 60 flatpak remotes --columns=name,url 2>/dev/null > "$P/flatpak-remotes.txt" || warn "flatpak remotes failed or timed out."
+tt 60 flatpak list --app --columns=ref 2>/dev/null > "$P/flatpak-apps.txt" || warn "flatpak list (apps) failed or timed out."
+tt 60 flatpak list --runtime --columns=ref 2>/dev/null > "$P/flatpak-runtimes.txt" || true
+
+info "  systemd: enabled units..."
+tt 30 systemctl list-unit-files --state=enabled --no-legend --no-pager 2>/dev/null | awk '{print $1}' | sort -u > "$P/systemd-enabled-units.txt" || true
+tt 30 systemctl --user list-unit-files --state=enabled --no-legend --no-pager 2>/dev/null | awk '{print $1}' | sort -u > "$P/systemd-user-enabled-units.txt" || true
 
 # ------------------------------------------------------------------ 7. meta
 log "Writing metadata manifest..."
