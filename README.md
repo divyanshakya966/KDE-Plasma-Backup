@@ -1,164 +1,140 @@
-# KDE Plasma 6, Plymouth, SDDM & Bash Configuration Manager
+# Fedora KDE Plasma Full Backup & Restore
 
-This repository contains automated Bash utilities for backing up and restoring the visual state, ricing configurations, user preferences, boot splash themes, login screen settings, and shell customizations of a customized KDE Plasma desktop environment.
+Bash utilities that snapshot and rebuild an entire customized Fedora KDE Plasma
+setup on a fresh install: desktop look, all user configs and dotfiles, system
+configuration, boot/login theming, and the complete installed application set
+(RPM, Flatpak, COPR repos and enabled services).
 
-Unlike heavy, full-system snapshot tools, these scripts are precision-targeted. They isolate user interface layouts, widget placements, power management schedules, shortcuts, themes, terminal configurations (`~/.bashrc` and **ble.sh** data), Plymouth boot screens, and SDDM customizations, making it easy to port your exact desktop experience across different machines or recover from a visual breakage.
+Two scripts:
 
-## Features
+- `backup-kde-rice.sh` — builds `~/kde_rice_backup_YYYYMMDD_HHMMSS.tar.gz`
+- `restore-kde-rice.sh` — rebuilds the machine from that archive
 
-* **Targeted Backups:** Captures dotfiles (`~/.bashrc`), local share assets (`~/.local/share/blesh/`), Plymouth boot themes/configs, Dracut rules, and display manager configs.
-
-
-* **Complete Visual & Behavior Portability:** Backs up panels, custom widgets (plasmoids), KWin rules, window decorations, global shortcuts, input device speeds, and font rendering settings.
-
-
-* **App & Utility Configs:** Saves preferences for built-in tools like KRunner, Konsole, Spectacle, and shell environment rules.
-
-
-* **Boot & Login Integration:** Preserves Plymouth themes (`/usr/share/plymouth/themes`), system Plymouth rules (`/etc/plymouth/`), Dracut configurations (`/etc/dracut.conf.d/`), and SDDM themes (`/usr/share/sddm`).
-
-
-* **Automated Initramfs Rebuild:** Automatically triggers `dracut --regenerate-all --force` upon restoration to bake restored Plymouth boot themes directly into the bootloader image.
-
-
-* **Timestamped Archives:** Automatically generates cleanly organized, timestamped `.tar.gz` archives for version control and rollback.
-
-
-
-## Prerequisites
-
-* **Operating System:** Fedora Workstation (or any system running KDE Plasma 5/6).
-
-
-* **Dependencies:** Standard coreutils (`cp`, `tar`, `mkdir`, `dracut`).
-
-
-* **Privileges:** `sudo` access is required *only* for Plymouth boot themes, Dracut, and SDDM configuration portions (backing up and restoring from `/etc` and `/usr/share`).
-
-
+Both require `sudo` (to read/write `/etc`, `/usr/share`, `/boot`). The archive
+contains sensitive data (passwords, WiFi keys, SSH/GPG material, tokens), so it
+is written `chmod 600` and a `.sha256` checksum is generated next to it.
 
 ---
 
-## What Gets Backed Up? (Configuration Mapping)
+## What gets backed up
 
-The scripts target the following specific configurations to ensure a 1:1 recreation of your desktop and shell environment:
-
-| Category | Targeted File / Directory | Description / Purpose |
+| Category | Source | Notes |
 | --- | --- | --- |
-| **Desktop Layout & Widgets** | `plasma-org.kde.plasma.desktop-appletsrc`<br><br>`plasmashellrc`, `plasmarc` | Panel positions, applets, widgets, and overall desktop layout configs.|
-| **KWin, Window Rules & UI** | `kwinrc`, `kwinrulesrc`, `breezerc` | Window rules, titlebar decorations, blur effects, and widget styles.|
-| **Themes, Colors & Fonts** | `kdeglobals`, `kcmfonts`<br><br>`~/.local/share/fonts/`<br><br>`~/.local/share/color-schemes/` | Global accent colors, custom fonts, DPI scaling, anti-aliasing, and color files.|
-| **Input & Peripherals** | `kcminputrc` | Mouse speed, acceleration, and touchpad gestures.|
-| **Global Shortcuts** | `kglobalshortcutsrc`, `khotkeysrc` | Keybindings, custom hotkeys, and window action shortcuts.|
-| **Power & Display** | `powermanagementprofilesrc`<br><br>`kscreenlockerrc`, `kscreen/`, `ksplashrc` | Sleep timeouts, screen dimming rules, lock screen layout, and splash screens.|
-| **Apps & Shell Environment** | `krunnerrc`, `konsolerc`, `spectaclerc`<br><br>`~/.local/share/konsole/`<br><br>`~/.bashrc`, `~/.local/share/blesh/` | KRunner search, Spectacle, Konsole profiles, shell configurations, and **ble.sh** local state files.|
-| **Custom Assets** | `~/.local/share/plasma/`, `icons/`, `themes/`, `wallpapers/`, `aurorae/` | Installed plasmoids, icon packs, custom window decorations, and wallpapers.|
-| **Plymouth Boot Themes** | `/usr/share/plymouth/themes/`<br><br>`/etc/plymouth/plymouthd.conf`<br><br>`/etc/dracut.conf.d/` | Custom boot screen visuals, active Plymouth theme configuration, and initramfs boot rules.|
-| **SDDM Login Configs** | `/etc/sddm.conf.d/`, `/etc/sddm.conf` | System login manager settings, auto-login rules, and display overrides.|
-| **SDDM Login Themes** | `/usr/share/sddm/themes/` | Custom login screen visual theme assets (QML, images, backgrounds).|
+| **User configs** | `~/.config/` | Entire directory: Plasma, KWin (`kwinoutputconfig.json`, `kwinrc`), Powerdevil (`powerdevilrc`), KRunner, Konsole, Spectacle, GTK/Qt, KDE Connect, app configs, etc. |
+| **User local assets** | `~/.local/share/`, `~/.local/bin`, `~/.local/state` | Plasmoids, themes, icons, fonts, wallpapers, aurorae, color-schemes, Konsole profiles, clipboard history, custom `.desktop` files. |
+| **Dotfiles** | every top-level `~/.<name>` | `.bashrc`, `.profile`, `.bash_history`, `.gitconfig`, `.gtkrc-2.0`, `.ssh`, `.gnupg`, shell/misc configs. |
+| **Flatpak app data** | `~/.var/` | App configs/data (caches excluded). |
+| **System config** | `/etc/` | Full copy: SDDM, Plymouth, dracut, NetworkManager connections, cron, systemd units, dnf repos, firewalld, X11/Xorg, modprobe, udev, etc. |
+| **System themes/assets** | `/usr/share/{sddm,themes,icons,fonts,plasma,color-schemes,aurorae,konsole,wallpapers,backgrounds,grub}/`, `/usr/share/plymouth/themes`, `/usr/share/{xsessions,wayland-sessions}`, `/usr/local/share` | System-wide installed look-and-feel, login/boot themes and fonts. |
+| **Boot theme assets** | `/boot/grub2/themes` | GRUB theme files. |
+| **Cron spool** | `/var/spool/cron` | User/root crontabs. |
+| **Package list** | `packages/rpm-userinstalled.txt` | `dnf repoquery --userinstalled` (clean package names, no versions). |
+| **Full RPM list** | `packages/rpm-all.txt` | Fallback inventory from `rpm -qa`. |
+| **Repos** | `packages/copr-repos.txt` | COPR repositories (`/etc/yum.repos.d` and GPG keys are in `/etc`). |
+| **Flatpak** | `packages/flatpak-{remotes,apps,runtimes}.txt` | Remotes and exact app refs. |
+| **Services** | `packages/systemd-{enabled,systemd-user-enabled}-units.txt` | Enabled system and user units. |
+| **Metadata** | `META.txt` | Hostname, Fedora/Plasma version, kernel, arch, user/uid/gid. |
+
+Heavy, regenerable data is **excluded** by default: `.cache`, `.npm`, `.bun`,
+`.cargo`, `.rustup`, `node_modules`, Steam, browser/Electron caches, Trash,
+baloo/kactivity indexes, container/flatpak runtimes.
+
+Normal user data (`Documents`, `Pictures`, `Music`, `Videos`, `Downloads`,
+`Desktop`, `GitHub`) is **not** included unless you run the backup with
+`INCLUDE_USER_DATA=1`:
+
+```bash
+INCLUDE_USER_DATA=1 ./backup-kde-rice.sh
+```
 
 ---
 
-## Usage Guide
+## Usage
 
-### 1. Backing Up Your Configuration
-
-The `backup-kde-rice.sh` script gathers your current configurations and bundles them into a compressed archive in your Home directory.
-
-1. **Make the script executable:**
+### 1. Back up
 
 ```bash
 chmod +x backup-kde-rice.sh
-
-```
-
-2. **Execute the backup:**
-
-```bash
 ./backup-kde-rice.sh
-
+# or, to also include your personal files:
+INCLUDE_USER_DATA=1 ./backup-kde-rice.sh
 ```
 
-3. **Provide Elevated Privileges:** The script will prompt for your `sudo` password to securely copy system-level Plymouth boot themes, Dracut configs, and SDDM settings from root-owned directories.
+Output (in `$HOME`):
 
+```
+kde_rice_backup_YYYYMMDD_HHMMSS.tar.gz
+kde_rice_backup_YYYYMMDD_HHMMSS.tar.gz.sha256
+```
 
-4. **Output:** A file named `kde_rice_backup_YYYYMMDD_HHMMSS.tar.gz` will be generated in your home folder.
+Copy both files somewhere safe (external drive / cloud). They are unencrypted —
+protect them.
 
-
-
-### 2. Restoring Your Configuration
-
-The `restore-kde-rice.sh` script extracts a designated backup archive and maps the files back to their appropriate system and user directories.
-
-1. **Make the script executable:**
+### 2. Restore onto a fresh Fedora KDE install
 
 ```bash
 chmod +x restore-kde-rice.sh
-
+./restore-kde-rice.sh /path/to/kde_rice_backup_YYYYMMDD_HHMMSS.tar.gz
+# add -y to skip the confirmation prompt
 ```
 
-2. **Run the restore command** (pass the archive file as an argument):
+The restore script will:
 
+1. Verify the checksum (aborts if it fails).
+2. Restore `/etc` (machine/disk/account-specific files are skipped — see below).
+3. Reinstall all RPM packages, Flatpak remotes + apps.
+4. Restore system themes/assets, GRUB themes and cron jobs.
+5. Restore your home dotfiles and app configs.
+6. Rebuild font/icon/service caches (`fc-cache`, `kbuildsycoca6`, desktop DBs).
+7. Re-enable enabled systemd system/user units.
+8. Fix SELinux file contexts (`restorecon`).
+9. Rebuild the initramfs (Plymouth) and GRUB menu.
 
-
-```bash
-./restore-kde-rice.sh kde_rice_backup_YYYYMMDD_HHMMSS.tar.gz
-
-```
-
-3. **Apply Changes:** The script automatically attempts to restart the Plasma shell, restore user dotfiles like `~/.bashrc`, and regenerate your initramfs image via `dracut`. For full application of Plymouth boot splash screens, SDDM, KWin rules, fonts, and input devices, **reboot your system**.
-
-
+Then **reboot**.
 
 ---
 
-## Modifying & Extending the Scripts
+## Safety
 
-The scripts are designed to be easily modified. You can adapt them to track additional applications or alter their behavior by editing the `.sh` files directly.
+The restore is intentionally conservative so a fresh install does **not** break:
 
-### 1. Adding New Applications (e.g., Kitty, Fastfetch, Kvantum)
+- It **never restores** `/etc/fstab`, `/etc/crypttab`, `/etc/machine-id`,
+  `/etc/passwd`, `/etc/shadow`, `/etc/group`, `/etc/subuid`, `/etc/subgid`,
+  `/etc/resolv.conf`, `/etc/selinux/` or `/etc/nvme/`. Disk layout, login
+  accounts and system identity stay exactly as the fresh installer created them.
+- It verifies the SHA-256 checksum before touching anything.
+- It requires an explicit `yes` confirmation (unless `-y`).
 
-If you heavily customize terminal emulators or specific theming engines, you should add them to the backup script. Open `backup-kde-rice.sh` and add a new `cp` line under the appropriate section:
+Notes / caveats:
 
-```bash
-# Example: Adding Kitty terminal and Kvantum themes to backup
-cp -r ~/.config/kitty "$BACKUP_DIR/user_config/" 2>/dev/null || true
-cp -r ~/.config/Kvantum "$BACKUP_DIR/user_config/" 2>/dev/null || true
-
-```
-
-### 2. Removing Root / Plymouth / SDDM Requirements
-
-If you want to run this script as a purely user-level automation job without manual `sudo` intervention, you can strip out system-level tracking.
-
-* **In the backup script:** Delete or comment out the entire Plymouth and SDDM blocks.
-
-
-* **In the restore script:** Delete or comment out the corresponding system restoration and `dracut` rebuild blocks.
-
-
-* *Result:* The scripts will now execute 100% in user-space without ever prompting for a root password.
-
-
-
-### 3. Changing the Output Directory
-
-By default, backups are saved to `$HOME`. To route them to an external drive or a dedicated backup folder, modify the `BACKUP_DIR` and `tar` destination variables at the bottom of the backup script:
-
-```bash
-# Change this line in backup-kde-rice.sh to target a new path
-tar -czvf "/mnt/external_drive/Backups/${BACKUP_NAME}.tar.gz" -C "$HOME" "$BACKUP_NAME"
-
-```
+- The archive is **unencrypted**. Store it securely and delete old copies.
+- Restoring a backup from a *different* Fedora major version may install
+  mismatched packages; prefer same-version backups.
+- Reinstalling ~470 RPMs and building initramfs can take a long time.
 
 ---
 
-## Security & Automation Best Practices
+## Manual checks after restore
 
-* **Secure Storage:** Because these archives contain exact system states and potentially sensitive user configurations (like application layouts or auto-login files), ensure the resulting `.tar.gz` files are stored in directories with restricted read permissions (`chmod 600`).
+If something looks off, the usual culprits and fixes:
 
+```bash
+# fonts not showing
+fc-cache -f && kbuildsycoca6 --noincremental
 
-* **Automated CI/CD or Cron:** If integrating this into an automated pipeline or standard `cron` job, remove the `sudo` Plymouth, Dracut, and SDDM prompts to prevent the script from hanging while waiting for standard input.
+# monitor layout wrong (edit ~/.config/kwinoutputconfig.json or use System Settings)
+# services not started
+systemctl --failed ; systemctl --user --failed
 
+# SELinux denials after copying old configs
+sudo restorecon -RF /etc /usr/share /home/$USER
+```
 
-* **Validation:** Regularly test your restoration script on a virtual machine or a secondary user account to ensure the structural integrity of the archives.
+To add more apps, edit the `SHARE_DIRS` array or the filter list in
+`backup-kde-rice.sh`.
+
+---
+
+## License
+
+Released under the MIT License. See [LICENSE](LICENSE).

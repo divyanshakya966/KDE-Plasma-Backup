@@ -1,2 +1,13 @@
+# Never commit backups, their checksums, or staging dirs
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
+*.tgz
+*.sha256
+*.stage
+*.stage/
+
+# Legacy explicit backup names
 COD.tar.gz
 Layan.tar.gz

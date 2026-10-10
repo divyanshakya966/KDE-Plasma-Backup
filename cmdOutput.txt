@@ -1,1 +1,5 @@
 printf "┌─ SYSTEM ─────────────────────┐\n"; printf "│ CPU %23s%% │\n" "$(top -bn1 | awk '/Cpu\(s\)/{print 100-$8}')"; printf "│ RAM %24s │\n" "$(free -h | awk '/Mem:/{print $3"/"$2}')"; printf "│ LOAD %23s │\n" "$(awk '{print $1, $2, $3}' /proc/loadavg)"; printf "├─ TOP PROCESSES ──────────────┤\n"; printf "│ %-6s %4s %4s %-11s │\n" "PID" "CPU" "MEM" "COMMAND"; ps -eo pid,%cpu,%mem,comm --sort=-%cpu | head -n 11 | tail -n 10 | awk '{printf "│ %-6s %4.1f %4.1f %-11.11s │\n",$1,$2,$3,$4}'; printf "└─ END ────────────────────────┘"
+
+# "ps" command filtered out
+
+printf "┌─ SYSTEM ─────────────────────┐\n"; printf "│ CPU %23s%% │\n" "$(top -bn1 | awk '/Cpu\(s\)/{print 100-$8}')"; printf "│ RAM %24s │\n" "$(free -h | awk '/Mem:/{print $3"/"$2}')"; printf "│ LOAD %23s │\n" "$(awk '{print $1, $2, $3}' /proc/loadavg)"; printf "├─ TOP PROCESSES ──────────────┤\n"; printf "│ %-6s %4s %4s %-11s │\n" "PID" "CPU" "MEM" "COMMAND"; ps -eo pid,%cpu,%mem,comm --sort=-%cpu | tail -n +2 | grep -v '\bps\b' | head -n 10 | awk '{printf "│ %-6s %4.1f %4.1f %-11.11s │\n", $1, $2, $3, $4}'; printf "└─ END ────────────────────────┘"
